@@ -2,13 +2,20 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/diegosano/pokedex-cli/internal/pokeapi"
 )
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	cc := &commandConfig{
+		previousLocationURL: nil,
+		nextLocationURL:     nil,
+	}
 
 	for {
 		fmt.Print("Pokedex > ")
@@ -23,7 +30,7 @@ func main() {
 
 		cmd, exists := getCommands()[string(command)]
 		if exists {
-			err := cmd.callback()
+			err := cmd.callback(cc)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -41,12 +48,17 @@ func normalizeInput(text string) []string {
 	return words
 }
 
-func commandExit() error {
+type commandConfig struct {
+	previousLocationURL *string
+	nextLocationURL     *string
+}
+
+func commandExit(cfg *commandConfig) error {
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp() error {
+func commandHelp(cfg *commandConfig) error {
 	fmt.Println()
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -58,10 +70,39 @@ func commandHelp() error {
 	return nil
 }
 
+func commandMap(cfg *commandConfig) error {
+	result, err := pokeapi.GetLocationArea(cfg.nextLocationURL)
+	if err != nil {
+		return err
+	}
+	for _, location := range result.Results {
+		fmt.Println(location.Name)
+	}
+	cfg.previousLocationURL = result.Previous
+	cfg.nextLocationURL = result.Next
+	return nil
+}
+
+func commandMapB(cfg *commandConfig) error {
+	if cfg.previousLocationURL == nil {
+		return errors.New("you cannot move back from first page of locations")
+	}
+	result, err := pokeapi.GetLocationArea(cfg.previousLocationURL)
+	if err != nil {
+		return err
+	}
+	for _, location := range result.Results {
+		fmt.Println(location.Name)
+	}
+	cfg.previousLocationURL = result.Previous
+	cfg.nextLocationURL = result.Next
+	return nil
+}
+
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*commandConfig) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -75,6 +116,16 @@ func getCommands() map[string]cliCommand {
 			name:        "exit",
 			description: "Exit the Pokedex",
 			callback:    commandExit,
+		},
+		"map": {
+			name:        "map",
+			description: "Display next 20 location names",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Display previous 20 location names",
+			callback:    commandMapB,
 		},
 	}
 }
