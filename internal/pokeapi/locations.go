@@ -107,6 +107,8 @@ func (c *Client) GetLocationAreas(url *string) (LocationsResponse, error) {
 		return LocationsResponse{}, err
 	}
 
+	c.cache.Add(defaultURL, body)
+
 	return response, nil
 }
 
@@ -143,6 +145,8 @@ func (c *Client) GetLocationArea(areaName string) (LocationResponse, error) {
 	if err != nil {
 		return LocationResponse{}, err
 	}
+
+	c.cache.Add(url, body)
 
 	return response, nil
 }
