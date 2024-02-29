@@ -19,7 +19,7 @@ func main() {
 		previousLocationURL: nil,
 		nextLocationURL:     nil,
 		pokeapiClient:       pokeapiClient,
-		caughtPokemons:      make(map[string]pokeapi.Pokemon),
+		caughtPokemons:      make(map[string]pokeapi.PokemonWithSpecie),
 	}
 
 	commandHelp(cc)
@@ -60,7 +60,7 @@ type commandConfig struct {
 	previousLocationURL *string
 	nextLocationURL     *string
 	pokeapiClient       pokeapi.Client
-	caughtPokemons      map[string]pokeapi.Pokemon
+	caughtPokemons      map[string]pokeapi.PokemonWithSpecie
 }
 
 func commandExit(cfg *commandConfig, args ...string) error {
@@ -131,7 +131,7 @@ func commandCatch(cfg *commandConfig, args ...string) error {
 		return errors.New("[catch] -> you must provide one pokemon name")
 	}
 	pokemonName := args[0]
-	pokemon, err := cfg.pokeapiClient.GetPokemon(pokemonName)
+	pokemon, err := cfg.pokeapiClient.GetPokemonWithSpecie(pokemonName)
 	if err != nil {
 		return err
 	}
@@ -143,6 +143,30 @@ func commandCatch(cfg *commandConfig, args ...string) error {
 	}
 	fmt.Println(pokemon.Name + " was caught!")
 	cfg.caughtPokemons[pokemon.Name] = pokemon
+	return nil
+}
+
+func commandInspect(cfg *commandConfig, args ...string) error {
+	if len(args) != 1 {
+		return errors.New("[inspect] -> you must provide one pokemon name")
+	}
+	pokemonName := args[0]
+	pokemon, ok := cfg.caughtPokemons[pokemonName]
+	if !ok {
+		fmt.Println("you have not caught " + pokemon.Name + "yet")
+		return nil
+	}
+	fmt.Println("Name: " + pokemon.Name)
+	fmt.Printf("Height: %d\n", pokemon.Height)
+	fmt.Printf("Weight: %d\n", pokemon.Weight)
+	fmt.Println("Stats: ")
+	for _, stat := range pokemon.Stats {
+		fmt.Printf(" - %s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types: " + pokemon.Name)
+	for _, types := range pokemon.Types {
+		fmt.Printf(" - %s\n", types.Type.Name)
+	}
 	return nil
 }
 
@@ -183,6 +207,11 @@ func getCommands() map[string]cliCommand {
 			name:        "catch",
 			description: "Try to catch a pokemon",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect the pokemon from your pokedex",
+			callback:    commandInspect,
 		},
 	}
 }
