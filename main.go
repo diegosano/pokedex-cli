@@ -20,7 +20,7 @@ func main() {
 		pokeapiClient:       pokeapiClient,
 	}
 
-	commandHelp(cc, []string{})
+	commandHelp(cc)
 
 	for {
 		fmt.Print("Pokedex > ")
@@ -36,7 +36,7 @@ func main() {
 
 		cmd, exists := getCommands()[command]
 		if exists {
-			err := cmd.callback(cc, args)
+			err := cmd.callback(cc, args...)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -60,12 +60,12 @@ type commandConfig struct {
 	pokeapiClient       pokeapi.Client
 }
 
-func commandExit(cfg *commandConfig, args []string) error {
+func commandExit(cfg *commandConfig, args ...string) error {
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(cfg *commandConfig, args []string) error {
+func commandHelp(cfg *commandConfig, args ...string) error {
 	fmt.Println()
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -77,7 +77,7 @@ func commandHelp(cfg *commandConfig, args []string) error {
 	return nil
 }
 
-func commandMap(cfg *commandConfig, args []string) error {
+func commandMap(cfg *commandConfig, args ...string) error {
 	result, err := cfg.pokeapiClient.GetLocationAreas(cfg.nextLocationURL)
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func commandMap(cfg *commandConfig, args []string) error {
 	return nil
 }
 
-func commandMapB(cfg *commandConfig, args []string) error {
+func commandMapB(cfg *commandConfig, args ...string) error {
 	if cfg.previousLocationURL == nil {
 		return errors.New("[mapb] -> you cannot move back from first page of locations")
 	}
@@ -106,16 +106,16 @@ func commandMapB(cfg *commandConfig, args []string) error {
 	return nil
 }
 
-func commandExplore(cfg *commandConfig, args []string) error {
-	if len(args) == 0 || len(args) > 1 {
-		return errors.New("[explore] -> you should pass one area name to explore")
+func commandExplore(cfg *commandConfig, args ...string) error {
+	if len(args) != 1 {
+		return errors.New("[explore] -> you must provide one location name to explore")
 	}
 	areaName := args[0]
-	fmt.Println("Exploring " + areaName + "...")
 	result, err := cfg.pokeapiClient.GetLocationArea(areaName)
 	if err != nil {
 		return err
 	}
+	fmt.Println("Exploring " + result.Location.Name + "...")
 	fmt.Println("Found pokemons:")
 	for _, encounter := range result.PokemonEncounters {
 		fmt.Println("- " + encounter.Pokemon.Name)
@@ -126,7 +126,7 @@ func commandExplore(cfg *commandConfig, args []string) error {
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*commandConfig, []string) error
+	callback    func(*commandConfig, ...string) error
 }
 
 func getCommands() map[string]cliCommand {
