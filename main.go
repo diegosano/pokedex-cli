@@ -6,15 +6,18 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/diegosano/pokedex-cli/internal/pokeapi"
 )
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
+	pokeapiClient := pokeapi.NewClient(time.Hour * 24)
 	cc := &commandConfig{
 		previousLocationURL: nil,
 		nextLocationURL:     nil,
+		pokeapiClient:       pokeapiClient,
 	}
 
 	for {
@@ -51,6 +54,7 @@ func normalizeInput(text string) []string {
 type commandConfig struct {
 	previousLocationURL *string
 	nextLocationURL     *string
+	pokeapiClient       pokeapi.Client
 }
 
 func commandExit(cfg *commandConfig) error {
@@ -71,7 +75,7 @@ func commandHelp(cfg *commandConfig) error {
 }
 
 func commandMap(cfg *commandConfig) error {
-	result, err := pokeapi.GetLocationArea(cfg.nextLocationURL)
+	result, err := cfg.pokeapiClient.GetLocationArea(cfg.nextLocationURL)
 	if err != nil {
 		return err
 	}
@@ -87,7 +91,7 @@ func commandMapB(cfg *commandConfig) error {
 	if cfg.previousLocationURL == nil {
 		return errors.New("you cannot move back from first page of locations")
 	}
-	result, err := pokeapi.GetLocationArea(cfg.previousLocationURL)
+	result, err := cfg.pokeapiClient.GetLocationArea(cfg.previousLocationURL)
 	if err != nil {
 		return err
 	}
