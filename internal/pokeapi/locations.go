@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-type LocationResponse struct {
+type LocationArea struct {
 	EncounterMethodRates []struct {
 		EncounterMethod struct {
 			Name string `json:"name"`
@@ -60,7 +60,7 @@ type LocationResponse struct {
 	} `json:"pokemon_encounters"`
 }
 
-type LocationsResponse struct {
+type LocationAreas struct {
 	Count    int     `json:"count"`
 	Next     *string `json:"next"`
 	Previous *string `json:"previous"`
@@ -70,41 +70,41 @@ type LocationsResponse struct {
 	} `json:"results"`
 }
 
-func (c *Client) GetLocationAreas(url *string) (LocationsResponse, error) {
+func (c *Client) GetLocationAreas(url *string) (LocationAreas, error) {
 	defaultURL := baseURL + "/location-area"
 	if url != nil {
 		defaultURL = *url
 	}
 
 	if val, ok := c.cache.Get(defaultURL); ok {
-		response := LocationsResponse{}
+		response := LocationAreas{}
 		err := json.Unmarshal(val, &response)
 		if err != nil {
-			return LocationsResponse{}, err
+			return LocationAreas{}, err
 		}
 		return response, nil
 	}
 
 	res, err := http.Get(defaultURL)
 	if err != nil {
-		return LocationsResponse{}, err
+		return LocationAreas{}, err
 	}
 
 	body, err := io.ReadAll(res.Body)
 	defer res.Body.Close()
 
 	if err != nil {
-		return LocationsResponse{}, err
+		return LocationAreas{}, err
 	}
 
 	if res.StatusCode > 299 {
-		return LocationsResponse{}, fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
+		return LocationAreas{}, fmt.Errorf("response failed with status code: %d and\nbody: %s", res.StatusCode, body)
 	}
 
-	response := LocationsResponse{}
+	response := LocationAreas{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return LocationsResponse{}, err
+		return LocationAreas{}, err
 	}
 
 	c.cache.Add(defaultURL, body)
@@ -112,38 +112,38 @@ func (c *Client) GetLocationAreas(url *string) (LocationsResponse, error) {
 	return response, nil
 }
 
-func (c *Client) GetLocationArea(areaName string) (LocationResponse, error) {
+func (c *Client) GetLocationArea(areaName string) (LocationArea, error) {
 	url := baseURL + "/location-area/" + areaName
 
 	if val, ok := c.cache.Get(url); ok {
-		response := LocationResponse{}
+		response := LocationArea{}
 		err := json.Unmarshal(val, &response)
 		if err != nil {
-			return LocationResponse{}, err
+			return LocationArea{}, err
 		}
 		return response, nil
 	}
 
 	res, err := http.Get(url)
 	if err != nil {
-		return LocationResponse{}, err
+		return LocationArea{}, err
 	}
 
 	body, err := io.ReadAll(res.Body)
 	defer res.Body.Close()
 
 	if err != nil {
-		return LocationResponse{}, err
+		return LocationArea{}, err
 	}
 
 	if res.StatusCode > 299 {
-		return LocationResponse{}, fmt.Errorf("location area \"%s\" not found", areaName)
+		return LocationArea{}, fmt.Errorf("location area \"%s\" not found", areaName)
 	}
 
-	response := LocationResponse{}
+	response := LocationArea{}
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return LocationResponse{}, err
+		return LocationArea{}, err
 	}
 
 	c.cache.Add(url, body)

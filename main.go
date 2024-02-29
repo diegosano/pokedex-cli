@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ func main() {
 		previousLocationURL: nil,
 		nextLocationURL:     nil,
 		pokeapiClient:       pokeapiClient,
+		caughtPokemons:      make(map[string]pokeapi.Pokemon),
 	}
 
 	commandHelp(cc)
@@ -58,6 +60,7 @@ type commandConfig struct {
 	previousLocationURL *string
 	nextLocationURL     *string
 	pokeapiClient       pokeapi.Client
+	caughtPokemons      map[string]pokeapi.Pokemon
 }
 
 func commandExit(cfg *commandConfig, args ...string) error {
@@ -111,15 +114,35 @@ func commandExplore(cfg *commandConfig, args ...string) error {
 		return errors.New("[explore] -> you must provide one location name to explore")
 	}
 	areaName := args[0]
-	result, err := cfg.pokeapiClient.GetLocationArea(areaName)
+	area, err := cfg.pokeapiClient.GetLocationArea(areaName)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Exploring " + result.Location.Name + "...")
+	fmt.Println("Exploring " + area.Location.Name + "...")
 	fmt.Println("Found pokemons:")
-	for _, encounter := range result.PokemonEncounters {
+	for _, encounter := range area.PokemonEncounters {
 		fmt.Println("- " + encounter.Pokemon.Name)
 	}
+	return nil
+}
+
+func commandCatch(cfg *commandConfig, args ...string) error {
+	if len(args) != 1 {
+		return errors.New("[catch] -> you must provide one pokemon name")
+	}
+	pokemonName := args[0]
+	pokemon, err := cfg.pokeapiClient.GetPokemon(pokemonName)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Throwing a pokeball at " + pokemon.Name + "...")
+	captured := catchPokemon(pokemon.CaptureRate)
+	if !captured {
+		fmt.Println(pokemon.Name + " escaped!")
+		return nil
+	}
+	fmt.Println(pokemon.Name + " was caught!")
+	cfg.caughtPokemons[pokemon.Name] = pokemon
 	return nil
 }
 
@@ -156,5 +179,20 @@ func getCommands() map[string]cliCommand {
 			description: "Explore a location area",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Try to catch a pokemon",
+			callback:    commandCatch,
+		},
 	}
+}
+
+func catchPokemon(captureRate int) bool {
+	if captureRate < 0 || captureRate > 255 {
+		fmt.Println("Invalid capture rate. It must be between 0 and 255.")
+		return false
+	}
+	randomNumber := rand.Intn(256)
+
+	return randomNumber <= captureRate
 }
