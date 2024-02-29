@@ -13,12 +13,14 @@ import (
 
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
-	pokeapiClient := pokeapi.NewClient(time.Hour * 24)
+	pokeapiClient := pokeapi.NewClient(time.Minute * 5)
 	cc := &commandConfig{
 		previousLocationURL: nil,
 		nextLocationURL:     nil,
 		pokeapiClient:       pokeapiClient,
 	}
+
+	commandHelp(cc, []string{})
 
 	for {
 		fmt.Print("Pokedex > ")
@@ -30,10 +32,11 @@ func main() {
 		}
 
 		command := words[0]
+		args := words[1:]
 
-		cmd, exists := getCommands()[string(command)]
+		cmd, exists := getCommands()[command]
 		if exists {
-			err := cmd.callback(cc)
+			err := cmd.callback(cc, args)
 			if err != nil {
 				fmt.Println(err)
 			}
@@ -57,12 +60,12 @@ type commandConfig struct {
 	pokeapiClient       pokeapi.Client
 }
 
-func commandExit(cfg *commandConfig) error {
+func commandExit(cfg *commandConfig, args []string) error {
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(cfg *commandConfig) error {
+func commandHelp(cfg *commandConfig, args []string) error {
 	fmt.Println()
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
@@ -74,8 +77,8 @@ func commandHelp(cfg *commandConfig) error {
 	return nil
 }
 
-func commandMap(cfg *commandConfig) error {
-	result, err := cfg.pokeapiClient.GetLocationArea(cfg.nextLocationURL)
+func commandMap(cfg *commandConfig, args []string) error {
+	result, err := cfg.pokeapiClient.GetLocationAreas(cfg.nextLocationURL)
 	if err != nil {
 		return err
 	}
@@ -87,11 +90,11 @@ func commandMap(cfg *commandConfig) error {
 	return nil
 }
 
-func commandMapB(cfg *commandConfig) error {
+func commandMapB(cfg *commandConfig, args []string) error {
 	if cfg.previousLocationURL == nil {
-		return errors.New("you cannot move back from first page of locations")
+		return errors.New("[mapb] -> you cannot move back from first page of locations")
 	}
-	result, err := cfg.pokeapiClient.GetLocationArea(cfg.previousLocationURL)
+	result, err := cfg.pokeapiClient.GetLocationAreas(cfg.previousLocationURL)
 	if err != nil {
 		return err
 	}
@@ -100,13 +103,30 @@ func commandMapB(cfg *commandConfig) error {
 	}
 	cfg.previousLocationURL = result.Previous
 	cfg.nextLocationURL = result.Next
+	return nil
+}
+
+func commandExplore(cfg *commandConfig, args []string) error {
+	if len(args) == 0 || len(args) > 1 {
+		return errors.New("[explore] -> you should pass one area name to explore")
+	}
+	areaName := args[0]
+	fmt.Println("Exploring " + areaName + "...")
+	result, err := cfg.pokeapiClient.GetLocationArea(areaName)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Found pokemons:")
+	for _, encounter := range result.PokemonEncounters {
+		fmt.Println("- " + encounter.Pokemon.Name)
+	}
 	return nil
 }
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(*commandConfig) error
+	callback    func(*commandConfig, []string) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -130,6 +150,11 @@ func getCommands() map[string]cliCommand {
 			name:        "mapb",
 			description: "Display previous 20 location names",
 			callback:    commandMapB,
+		},
+		"explore": {
+			name:        "explore",
+			description: "Explore a location area",
+			callback:    commandExplore,
 		},
 	}
 }
